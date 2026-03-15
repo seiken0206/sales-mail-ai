@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI営業メール作成ツール</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ==============================
+       CSS変数（テーマカラー）
+    ============================== */
+    :root {
+      --bg:         #0a0c10;
+      --surface:    #111318;
+      --surface2:   #181c24;
+      --border:     #252b38;
+      --accent:     #00e5ff;
+      --accent2:    #7b61ff;
+      --accent-glow: rgba(0, 229, 255, 0.18);
+      --text:       #e8eaf0;
+      --text-muted: #6b7385;
+      --success:    #00e5a0;
+      --radius:     12px;
+      --radius-sm:  8px;
+    }
+
+    /* ==============================
+       リセット・ベース
+    ============================== */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Noto Sans JP', sans-serif;
+      font-weight: 400;
+      min-height: 100dvh;
+      line-height: 1.7;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ==============================
+       グリッド背景（近未来感）
+    ============================== */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ==============================
+       レイアウト
+    ============================== */
+    .wrapper {
+      position: relative;
+      z-index: 1;
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 24px 16px 60px;
+    }
+
+    /* ==============================
+       ヘッダー
+    ============================== */
+    .header {
+      text-align: center;
+      padding: 36px 0 32px;
+    }
+
+    .header-badge {
+      display: inline-block;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.15em;
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      padding: 3px 12px;
+      border-radius: 100px;
+      margin-bottom: 16px;
+      text-transform: uppercase;
+      opacity: 0.85;
+    }
+
+    .header h1 {
+      font-size: clamp(22px, 5vw, 32px);
+      font-weight: 700;
+      line-height: 1.3;
+      letter-spacing: -0.01em;
+    }
+
+    .header h1 span {
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .header p {
+      margin-top: 10px;
+      font-size: 14px;
+      color: var(--text-muted);
+      font-weight: 300;
+    }
+
+    /* ==============================
+       カード（入力エリア）
+    ============================== */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px 24px;
+      margin-bottom: 20px;
+    }
+
+    .card-title {
+      font-size: 11px;
+      font-family: 'Share Tech Mono', monospace;
+      letter-spacing: 0.12em;
+      color: var(--accent);
+      text-transform: uppercase;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card-title::before {
+      content: '';
+      display: inline-block;
+      width: 16px;
+      height: 1px;
+      background: var(--accent);
+    }
+
+    /* ==============================
+       メール種類タブ
+    ============================== */
+    .mail-type-label {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+      display: block;
+    }
+
+    .mail-type-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+
+    .mail-type-btn {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-muted);
+      font-family: 'Noto Sans JP', sans-serif;
+      font-size: 13px;
+      padding: 10px 8px;
+      cursor: pointer;
+      transition: all 0.18s ease;
+      text-align: center;
+      line-height: 1.4;
+    }
+
+    .mail-type-btn:hover {
+      border-color: var(--accent);
+      color: var(--text);
+    }
+
+    .mail-type-btn.active {
+      background: rgba(0, 229, 255, 0.08);
+      border-color: var(--accent);
+      color: var(--accent);
+      font-weight: 500;
+      box-shadow: 0 0 12px var(--accent-glow);
+    }
+
+    /* ==============================
+       入力フォーム
+    ============================== */
+    .form-group {
+      margin-bottom: 18px;
+    }
+
+    .form-group:last-child {
+      margin-bottom: 0;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 7px;
+      letter-spacing: 0.02em;
+    }
+
+    label .required {
+      color: var(--accent);
+      margin-left: 4px;
+      font-size: 11px;
+    }
+
+    input[type="text"],
+    textarea {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-family: 'Noto Sans JP', sans-serif;
+      font-size: 15px;
+      padding: 13px 15px;
+      outline: none;
+      transition: border-color 0.18s, box-shadow 0.18s;
+      -webkit-appearance: none;
+    }
+
+    input[type="text"]::placeholder,
+    textarea::placeholder {
+      color: var(--text-muted);
+      font-size: 14px;
+      opacity: 0.6;
+    }
+
+    input[type="text"]:focus,
+    textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 90px;
+    }
+
+    /* ==============================
+       ボタン
+    ============================== */
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 24px;
+      flex-wrap: wrap;
+    }
+
+    .btn-generate {
+      flex: 1;
+      min-width: 180px;
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
+      border: none;
+      border-radius: var(--radius-sm);
+      color: #000;
+      font-family: 'Noto Sans JP', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      padding: 15px 20px;
+      cursor: pointer;
+      letter-spacing: 0.04em;
+      transition: opacity 0.18s, transform 0.12s, box-shadow 0.18s;
+      box-shadow: 0 4px 24px rgba(0, 229, 255, 0.28);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn-generate::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(255,255,255,0);
+      transition: background 0.15s;
+    }
+
+    .btn-generate:hover {
+      opacity: 0.92;
+      transform: translateY(-1px);
+      box-shadow: 0 6px 30px rgba(0, 229, 255, 0.4);
+    }
+
+    .btn-generate:active {
+      transform: translateY(0);
+    }
+
+    .btn-generate:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-sample {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-muted);
+      font-family: 'Noto Sans JP', sans-serif;
+      font-size: 13px;
+      padding: 15px 18px;
+      cursor: pointer;
+      transition: all 0.18s;
+      white-space: nowrap;
+    }
+
+    .btn-sample:hover {
+      border-color: var(--accent2);
+      color: var(--text);
+    }
+
+    /* ==============================
+       ローディング
+    ============================== */
+    .loading {
+      display: none;
+      text-align: center;
+      padding: 32px;
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+
+    .loading.show { display: block; }
+
+    .loading-dots {
+      display: inline-flex;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+
+    .loading-dots span {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      animation: bounce 1.2s infinite;
+      opacity: 0.7;
+    }
+
+    .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes bounce {
+      0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+      40%            { transform: translateY(-8px); opacity: 1; }
+    }
+
+    /* ==============================
+       結果エリア
+    ============================== */
+    .result-area {
+      display: none;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      animation: fadeIn 0.4s ease;
+    }
+
+    .result-area.show { display: block; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .result-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface2);
+    }
+
+    .result-title {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      color: var(--success);
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .result-title::before {
+      content: '✓';
+      font-family: sans-serif;
+    }
+
+    .btn-copy {
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-muted);
+      font-family: 'Noto Sans JP', sans-serif;
+      font-size: 12px;
+      padding: 6px 14px;
+      cursor: pointer;
+      transition: all 0.18s;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .btn-copy:hover {
+      border-color: var(--success);
+      color: var(--success);
+    }
+
+    .btn-copy.copied {
+      border-color: var(--success);
+      color: var(--success);
+    }
+
+    .result-body {
+      padding: 24px 20px;
+    }
+
+    /* 件名 */
+    .subject-block {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      background: rgba(0,229,255,0.05);
+      border: 1px solid rgba(0,229,255,0.15);
+      border-radius: var(--radius-sm);
+      padding: 14px 16px;
+      margin-bottom: 20px;
+    }
+
+    .subject-label {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      color: var(--accent);
+      white-space: nowrap;
+      padding-top: 2px;
+    }
+
+    .subject-text {
+      font-size: 15px;
+      font-weight: 500;
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    /* 本文 */
+    .body-text {
+      font-size: 15px;
+      line-height: 2;
+      color: var(--text);
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-weight: 300;
+    }
+
+    /* ==============================
+       フッター
+    ============================== */
+    .footer {
+      text-align: center;
+      padding-top: 40px;
+      font-size: 12px;
+      color: var(--text-muted);
+      opacity: 0.5;
+    }
+
+    /* ==============================
+       レスポンシブ
+    ============================== */
+    @media (max-width: 480px) {
+      .card { padding: 20px 16px; }
+      .mail-type-grid { grid-template-columns: 1fr 1fr; }
+      .btn-row { flex-direction: column; }
+      .btn-sample { text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="wrapper">
+
+  <!-- ヘッダー -->
+  <header class="header">
+    <div class="header-badge">AI Sales Mail Generator</div>
+    <h1><span>AI営業メール</span>作成ツール</h1>
+    <p>業種・提案内容・相手情報を入力するだけで、すぐ使える営業メールを生成します</p>
+  </header>
+
+  <!-- 入力カード -->
+  <div class="card">
+    <div class="card-title">メール種類を選択</div>
+
+    <!-- メール種類ボタン -->
+    <span class="mail-type-label">生成するメールの種類</span>
+    <div class="mail-type-grid" id="mailTypeGrid">
+      <button class="mail-type-btn active" data-type="initial">📩 初回営業</button>
+      <button class="mail-type-btn" data-type="thanks">🤝 お礼メール</button>
+      <button class="mail-type-btn" data-type="reproposal">🔄 再提案</button>
+      <button class="mail-type-btn" data-type="dormant">💡 休眠掘り起こし</button>
+      <button class="mail-type-btn" data-type="document" style="grid-column: span 2;">📎 資料送付</button>
+    </div>
+
+    <div class="card-title">入力情報</div>
+
+    <!-- 業種 -->
+    <div class="form-group">
+      <label for="industry">業種<span class="required">*</span></label>
+      <input type="text" id="industry" placeholder="例：ホテル、製造業、飲食店チェーン" />
+    </div>
+
+    <!-- 提案内容 -->
+    <div class="form-group">
+      <label for="proposal">提案内容<span class="required">*</span></label>
+      <textarea id="proposal" placeholder="例：EV充電器の導入提案&#10;例：クラウド型勤怠管理システムの導入"></textarea>
+    </div>
+
+    <!-- 相手情報 -->
+    <div class="form-group">
+      <label for="contact">相手の役職・担当者情報<span class="required">*</span></label>
+      <input type="text" id="contact" placeholder="例：支配人、総務部長、代表取締役" />
+    </div>
+
+    <!-- ボタン行 -->
+    <div class="btn-row">
+      <button class="btn-generate" id="btnGenerate">✦ 営業メールを生成</button>
+      <button class="btn-sample" id="btnSample">サンプル入力</button>
+    </div>
+  </div>
+
+  <!-- ローディング -->
+  <div class="loading" id="loading">
+    <div class="loading-dots">
+      <span></span><span></span><span></span>
+    </div>
+    <p>メールを生成中...</p>
+  </div>
+
+  <!-- 結果エリア -->
+  <div class="result-area" id="resultArea">
+    <div class="result-header">
+      <div class="result-title">生成完了</div>
+      <button class="btn-copy" id="btnCopy">📋 コピー</button>
+    </div>
+    <div class="result-body">
+      <div class="subject-block">
+        <span class="subject-label">件名</span>
+        <span class="subject-text" id="resultSubject"></span>
+      </div>
+      <div class="body-text" id="resultBody"></div>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <p>AI営業メール作成ツール — テンプレートエンジン搭載</p>
+  </footer>
+
+</div><!-- /wrapper -->
+
+<script>
+  // ==============================
+  // メール種類管理
+  // ==============================
+  let currentMailType = 'initial';
+
+  document.getElementById('mailTypeGrid').addEventListener('click', function(e) {
+    const btn = e.target.closest('.mail-type-btn');
+    if (!btn) return;
+    document.querySelectorAll('.mail-type-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentMailType = btn.dataset.type;
+  });
+
+  // ==============================
+  // サンプル入力
+  // ==============================
+  document.getElementById('btnSample').addEventListener('click', function() {
+    document.getElementById('industry').value = 'ホテル';
+    document.getElementById('proposal').value = 'EV充電器の導入提案';
+    document.getElementById('contact').value = '支配人';
+  });
+
+  // ==============================
+  // メール生成メイン処理
+  // ==============================
+  document.getElementById('btnGenerate').addEventListener('click', function() {
+    const industry  = document.getElementById('industry').value.trim();
+    const proposal  = document.getElementById('proposal').value.trim();
+    const contact   = document.getElementById('contact').value.trim();
+
+    // バリデーション
+    if (!industry || !proposal || !contact) {
+      alert('業種・提案内容・相手情報をすべて入力してください。');
+      return;
+    }
+
+    // ローディング表示
+    document.getElementById('loading').classList.add('show');
+    document.getElementById('resultArea').classList.remove('show');
+
+    // 少し間を置いてから生成（UX向上）
+    setTimeout(function() {
+      const mail = generateMail(currentMailType, industry, proposal, contact);
+      document.getElementById('resultSubject').textContent = mail.subject;
+      document.getElementById('resultBody').textContent = mail.body;
+
+      document.getElementById('loading').classList.remove('show');
+      document.getElementById('resultArea').classList.add('show');
+      document.getElementById('resultArea').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 600);
+  });
+
+  // ==============================
+  // コピー機能
+  // ==============================
+  document.getElementById('btnCopy').addEventListener('click', function() {
+    const subject = document.getElementById('resultSubject').textContent;
+    const body    = document.getElementById('resultBody').textContent;
+    const text    = '件名：' + subject + '\n\n' + body;
+
+    navigator.clipboard.writeText(text).then(function() {
+      const btn = document.getElementById('btnCopy');
+      btn.textContent = '✓ コピー完了';
+      btn.classList.add('copied');
+      setTimeout(function() {
+        btn.textContent = '📋 コピー';
+        btn.classList.remove('copied');
+      }, 2000);
+    }).catch(function() {
+      // クリップボードAPIが使えない環境への対応
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      const btn = document.getElementById('btnCopy');
+      btn.textContent = '✓ コピー完了';
+      setTimeout(function() { btn.textContent = '📋 コピー'; }, 2000);
+    });
+  });
+
+  // ==============================
+  // メール生成ロジック
+  // ==============================
+
+  /**
+   * メール本文・件名を生成する
+   * @param {string} type     - メール種類
+   * @param {string} industry - 業種
+   * @param {string} proposal - 提案内容
+   * @param {string} contact  - 相手情報
+   * @returns {{ subject: string, body: string }}
+   */
+  function generateMail(type, industry, proposal, contact) {
+    const templates = {
+
+      // ── 初回営業メール ──
+      initial: function(industry, proposal, contact) {
+        const subject = industry + '様向け ' + proposal + ' のご提案';
+        const body =
+          contact + ' 様\n\n' +
+          'はじめてご連絡を差し上げます。\n' +
+          '私、株式会社〇〇の△△と申します。\n\n' +
+          'このたびは、' + industry + '業界を対象に「' + proposal + '」に関するご提案でご連絡いたしました。\n\n' +
+          '昨今、同業界では業務効率化やコスト改善を求める声が高まっており、\n' +
+          '弊社ではその課題に対応するソリューションをご提供しております。\n\n' +
+          '具体的には、' + proposal + 'を通じて以下のようなメリットが期待できます。\n' +
+          '・業務にかかる手間やコストの削減\n' +
+          '・顧客満足度および社内生産性の向上\n' +
+          '・業界トレンドへの迅速な対応\n\n' +
+          'ご多忙のところ大変恐れ入りますが、\n' +
+          '30分程度のお時間をいただけますでしょうか。\n' +
+          'オンライン・対面どちらでも対応可能です。\n\n' +
+          'ご関心をお持ちいただけましたら、お気軽にご返信ください。\n' +
+          'どうぞよろしくお願いいたします。\n\n' +
+          '株式会社〇〇\n' +
+          '担当：△△\n' +
+          'TEL：000-0000-0000\n' +
+          'MAIL：xxxx@example.com';
+        return { subject, body };
+      },
+
+      // ── お礼メール ──
+      thanks: function(industry, proposal, contact) {
+        const subject = '先日のお打ち合わせのお礼（' + proposal + '）';
+        const body =
+          contact + ' 様\n\n' +
+          'お世話になっております。株式会社〇〇の△△です。\n\n' +
+          '先日はお忙しい中、お時間をいただきまして誠にありがとうございました。\n\n' +
+          '「' + proposal + '」についてご説明の機会をいただき、\n' +
+          '貴社のご状況や課題感についても率直にお聞かせいただけたこと、\n' +
+          '大変参考になりました。\n\n' +
+          'ご質問いただいた点については、改めて資料にまとめ、\n' +
+          '後日ご送付させていただきます。\n\n' +
+          'ご不明な点やご確認事項がございましたら、\n' +
+          'いつでもお気軽にご連絡ください。\n\n' +
+          '引き続きどうぞよろしくお願いいたします。\n\n' +
+          '株式会社〇〇\n' +
+          '担当：△△\n' +
+          'TEL：000-0000-0000\n' +
+          'MAIL：xxxx@example.com';
+        return { subject, body };
+      },
+
+      // ── 再提案メール ──
+      reproposal: function(industry, proposal, contact) {
+        const subject = '【再提案】' + proposal + ' — 改めてご案内させてください';
+        const body =
+          contact + ' 様\n\n' +
+          'お世話になっております。株式会社〇〇の△△です。\n\n' +
+          '以前、「' + proposal + '」についてご提案させていただきましたが、\n' +
+          'その後いかがでしょうか。\n\n' +
+          '改めてご連絡した理由は、貴社・' + industry + '業界における\n' +
+          '最新の動向を踏まえ、前回よりも具体的な内容でご提案できると判断したためです。\n\n' +
+          '今回は、実際の導入事例や費用感など、\n' +
+          '意思決定に役立つ情報もあわせてご用意しております。\n\n' +
+          'もし改めてご検討の余地があれば、\n' +
+          '短時間でも構いませんのでお時間をいただけますと幸いです。\n\n' +
+          'ご連絡をお待ちしております。\n\n' +
+          '株式会社〇〇\n' +
+          '担当：△△\n' +
+          'TEL：000-0000-0000\n' +
+          'MAIL：xxxx@example.com';
+        return { subject, body };
+      },
+
+      // ── 休眠掘り起こしメール ──
+      dormant: function(industry, proposal, contact) {
+        const subject = 'ご無沙汰しております — ' + industry + '向けの新しいご提案';
+        const body =
+          contact + ' 様\n\n' +
+          'ご無沙汰しております。株式会社〇〇の△△です。\n' +
+          '以前はお時間をいただき、ありがとうございました。\n\n' +
+          'しばらくご連絡が空いてしまいましたが、\n' +
+          'その後、貴社のお役に立てることがあれば、と改めてご連絡いたしました。\n\n' +
+          '最近、' + industry + '業界においても「' + proposal + '」への関心が高まっており、\n' +
+          '弊社でも以前よりさらに導入しやすい形でご提供できるようになりました。\n\n' +
+          'もし現在、何かご課題を抱えていらっしゃるようであれば、\n' +
+          'ぜひ一度ご相談いただければと思います。\n\n' +
+          'お気軽にご返信いただければ幸いです。\n' +
+          '引き続きどうぞよろしくお願いいたします。\n\n' +
+          '株式会社〇〇\n' +
+          '担当：△△\n' +
+          'TEL：000-0000-0000\n' +
+          'MAIL：xxxx@example.com';
+        return { subject, body };
+      },
+
+      // ── 資料送付メール ──
+      document: function(industry, proposal, contact) {
+        const subject = '【資料送付】' + proposal + ' に関するご案内資料';
+        const body =
+          contact + ' 様\n\n' +
+          'お世話になっております。株式会社〇〇の△△です。\n\n' +
+          '先日お話しいたしました「' + proposal + '」について、\n' +
+          '詳細をまとめた資料をお送りいたします。\n\n' +
+          '添付資料の内容は以下のとおりです。\n' +
+          '・サービス概要と導入メリット\n' +
+          '・' + industry + '業界での活用事例\n' +
+          '・費用感・導入フロー\n\n' +
+          'ご確認いただいたうえで、ご不明な点や追加でお知りになりたいことがあれば、\n' +
+          'お気軽にご連絡ください。\n\n' +
+          'また、ご都合のよろしい日程でご説明の機会をいただけるようであれば、\n' +
+          'ぜひ調整させていただければと思います。\n\n' +
+          'お忙しいところ恐れ入りますが、よろしくお願いいたします。\n\n' +
+          '株式会社〇〇\n' +
+          '担当：△△\n' +
+          'TEL：000-0000-0000\n' +
+          'MAIL：xxxx@example.com';
+        return { subject, body };
+      }
+    };
+
+    // 対応するテンプレートを呼び出す
+    const fn = templates[type] || templates.initial;
+    return fn(industry, proposal, contact);
+  }
+
+</script>
+</body>
+</html>
